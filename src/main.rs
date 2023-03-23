@@ -1,6 +1,5 @@
-mod errors;
+mod api;
 
 fn main() {
     println!("Hello, world!");
-
 }
