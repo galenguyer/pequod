@@ -1,5 +1,6 @@
 //! Base V2 API route. Typically, this can be used for lightweight version checks and to validate registry authentication.
-//! <https://docs.docker.com/registry/spec/api/#base>
+//!
+//! [Reference](https://docs.docker.com/registry/spec/api/#base)
 use axum::http::status::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;

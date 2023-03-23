@@ -1,0 +1,3 @@
+CREATE TABLE IF NOT EXISTS repositories (
+    name TEXT NOT NULL PRIMARY KEY
+);
