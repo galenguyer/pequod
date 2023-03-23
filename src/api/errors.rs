@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
+use serde::Serialize;
+
 /// The details of a [RegistryError] to be returned by the API
-#[derive(Debug)]
-struct RegistryErrorDetails {
+#[derive(Debug, Serialize)]
+pub struct RegistryErrorDetails {
     code: String,
     message: String,
 }
