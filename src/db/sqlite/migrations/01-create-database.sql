@@ -1,3 +1,9 @@
 CREATE TABLE IF NOT EXISTS repositories (
     name TEXT NOT NULL PRIMARY KEY
 );
+
+CREATE TABLE IF NOT EXISTS tags (
+    name TEXT NOT NULL PRIMARY KEY,
+    repository TEXT NOT NULL,
+    FOREIGN KEY (repository) REFERENCES repositories (name) ON DELETE CASCADE
+);

@@ -6,3 +6,6 @@ pub use base::base;
 
 mod catalog;
 pub use catalog::catalog;
+
+mod tags;
+pub use tags::*;
