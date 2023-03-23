@@ -1,27 +1,48 @@
+#![allow(dead_code)]
+
 #[derive(Debug)]
 struct RegistryErrorDetails {
     code: String,
     message: String,
 }
 
-#[derive(Debug)]
+/// Errors that can be returned by the registry.
+/// https://docs.docker.com/registry/spec/api/#errors-2
+#[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
+    #[error("blob unknown to registry")]
     BlobUnknown,
+    #[error("blob upload invalid")]
     BlobUploadInvalid,
+    #[error("blob upload unknown to registry")]
     BlobUploadUnknown,
+    #[error("provided digest did not match uploaded content")]
     DigestInvalid,
+    #[error("blob unknown to registry")]
     ManifestBlobUnknown,
+    #[error("manifest invalid")]
     ManifestInvalid,
+    #[error("manifest unknown")]
     ManifestUnknown,
+    #[error("manifest failed signature verification")]
     ManifestUnverified,
+    #[error("invalid repository name")]
     NameInvalid,
+    #[error("repository name not known to registry")]
     NameUnknown,
+    #[error("the page number requested is outside the valid range")]
     PaginationNumberInvalid,
+    #[error("provided range was invalid")]
     RangeInvalid,
+    #[error("provided length did not match content length")]
     SizeInvalid,
+    #[error("manifest tag did not match URI")]
     TagInvalid,
+    #[error("authentication required")]
     Unauthorized,
+    #[error("requested access to the resource is denied")]
     Denied,
+    #[error("the operation is unsupported")]
     Unsupported,
 }
 
