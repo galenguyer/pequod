@@ -9,3 +9,7 @@ pub use catalog::catalog;
 
 mod tags;
 pub use tags::*;
+
+pub mod manifests;
+
+pub mod blob;
