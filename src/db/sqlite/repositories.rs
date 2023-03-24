@@ -12,3 +12,11 @@ pub async fn list() -> Result<Vec<Repository>, RusqliteError> {
     let rows = statement.query_map([], |row| Ok(Repository { name: row.get(0)? }))?;
     rows.into_iter().collect()
 }
+
+pub async fn save(name: &str) -> Result<(), RusqliteError> {
+    let conn = Connection::open("registry.db")?;
+    let mut statement = conn.prepare("INSERT INTO repositories (name) VALUES (?)")?;
+    statement.execute([name])?;
+
+    Ok(())
+}

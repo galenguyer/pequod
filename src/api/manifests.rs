@@ -108,12 +108,13 @@ pub async fn put(
     let hash = sha256::digest(body.clone());
     let digest = format!("sha256:{hash}");
 
-    crate::db::sqlite::manifests::save(&digest, &body)
+    sqlite::manifests::save(&digest, &body)
         .await
         .unwrap();
 
+    sqlite::repositories::save(&name).await.unwrap();
     if !crate::DIGEST_REGEX.is_match(&reference) {
-        crate::db::sqlite::tags::save(&name, &reference, &digest)
+        sqlite::tags::save(&name, &reference, &digest)
             .await
             .unwrap();
     }
