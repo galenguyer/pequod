@@ -1,5 +1,4 @@
 use rusqlite::{Connection, Error as RusqliteError};
-use serde::Serialize;
 
 pub async fn list(repository: &str) -> Result<Vec<String>, RusqliteError> {
     let conn = Connection::open("registry.db")?;
@@ -10,7 +9,8 @@ pub async fn list(repository: &str) -> Result<Vec<String>, RusqliteError> {
 
 pub async fn save(repository: &str, tag: &str, digest: &str) -> Result<(), RusqliteError> {
     let conn = Connection::open("registry.db")?;
-    let mut statement = conn.prepare("INSERT INTO tags (repository, name, manifest) VALUES (?, ?, ?)")?;
+    let mut statement =
+        conn.prepare("INSERT INTO tags (repository, name, manifest) VALUES (?, ?, ?)")?;
     statement.execute([repository, tag, digest])?;
 
     Ok(())
@@ -18,7 +18,8 @@ pub async fn save(repository: &str, tag: &str, digest: &str) -> Result<(), Rusql
 
 pub async fn get(repository: &str, tag: &str) -> Result<String, RusqliteError> {
     let conn = Connection::open("registry.db")?;
-    let mut statement = conn.prepare("SELECT manifest FROM tags WHERE repository = ? AND name = ?")?;
+    let mut statement =
+        conn.prepare("SELECT manifest FROM tags WHERE repository = ? AND name = ?")?;
     let mut rows = statement.query([repository, tag])?;
 
     let row = rows.next()?;

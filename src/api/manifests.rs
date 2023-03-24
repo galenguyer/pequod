@@ -2,9 +2,7 @@ use axum::extract::Path;
 use axum::http::header::{ACCEPT, CONTENT_TYPE};
 use axum::http::{HeaderName, StatusCode};
 use axum::response::IntoResponse;
-use axum::Json;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use crate::db::sqlite;
 
@@ -76,7 +74,7 @@ pub async fn get(Path((name, reference)): Path<(String, String)>) -> impl IntoRe
         true => reference,
         false => {
             tracing::info!("resolving tag: {}:{}", name, reference);
-            let digest =sqlite::tags::get(&name, &reference).await.unwrap();
+            let digest = sqlite::tags::get(&name, &reference).await.unwrap();
             tracing::info!("resolved tag {}:{} to digest {}", name, reference, digest);
             digest
         }
@@ -84,10 +82,7 @@ pub async fn get(Path((name, reference)): Path<(String, String)>) -> impl IntoRe
     let raw = sqlite::manifests::get(&digest).await.unwrap();
     (
         [
-            (
-                HeaderName::from_static("docker-content-digest"),
-                digest,
-            ),
+            (HeaderName::from_static("docker-content-digest"), digest),
             (
                 CONTENT_TYPE,
                 "application/vnd.docker.distribution.manifest.v2+json".to_string(),
@@ -127,9 +122,6 @@ pub async fn put(
 
     (
         StatusCode::CREATED,
-        [(
-            HeaderName::from_static("docker-content-digest"),
-            digest,
-        )],
+        [(HeaderName::from_static("docker-content-digest"), digest)],
     )
 }

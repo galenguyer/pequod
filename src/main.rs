@@ -1,12 +1,8 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
 use axum::extract::DefaultBodyLimit;
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::Response;
-use axum::{routing, Extension, Router, ServiceExt};
-use bytes::Bytes;
+use axum::{routing, Router, ServiceExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 use tower::Layer;
@@ -65,7 +61,7 @@ async fn main() {
                 routing::patch(api::blob::patch_uploads)
                     .put(api::blob::finish_uploads)
                     .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
-            )
+            ),
     );
 
     let app = rewriter.layer(router);

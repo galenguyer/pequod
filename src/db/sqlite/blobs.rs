@@ -1,8 +1,7 @@
-
 use std::io::Read;
 
-use rusqlite::{Connection, Error as RusqliteError};
 use bytes::Bytes;
+use rusqlite::{Connection, Error as RusqliteError};
 
 pub async fn get(digest: &str) -> Result<Bytes, RusqliteError> {
     let conn = Connection::open("registry.db")?;
@@ -12,7 +11,7 @@ pub async fn get(digest: &str) -> Result<Bytes, RusqliteError> {
     let row = rows.next()?;
 
     let result = match row {
-        Some(row) => row.get::<usize,Vec<u8>>(0)?,
+        Some(row) => row.get::<usize, Vec<u8>>(0)?,
         None => {
             return Err(RusqliteError::QueryReturnedNoRows);
         }
@@ -26,7 +25,10 @@ pub async fn get(digest: &str) -> Result<Bytes, RusqliteError> {
 pub async fn save(digest: &str, value: &Bytes) -> Result<(), RusqliteError> {
     let conn = Connection::open("registry.db")?;
     let mut statement = conn.prepare("INSERT INTO blobs (digest, value) VALUES (?, ?)")?;
-    statement.execute(rusqlite::params![digest, value.bytes().map(|b| b.unwrap()).collect::<Vec<u8>>()])?;
+    statement.execute(rusqlite::params![
+        digest,
+        value.bytes().map(|b| b.unwrap()).collect::<Vec<u8>>()
+    ])?;
 
     Ok(())
 }

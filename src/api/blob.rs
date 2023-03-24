@@ -7,16 +7,14 @@ use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::db::sqlite;
 
-pub async fn get_blob(
-    Path((_name, digest)): Path<(String, String)>,
-) -> impl IntoResponse {
+pub async fn get_blob(Path((_name, digest)): Path<(String, String)>) -> impl IntoResponse {
     let blob = sqlite::blobs::get(&digest).await;
     if blob.is_err() {
         return (StatusCode::NOT_FOUND, "Not Found").into_response();
     }
     let blob = blob.unwrap();
 
-    tracing::info!("serving blob with digest {} (size: {})", digest,  blob.len());
+    tracing::info!("serving blob with digest {} (size: {})", digest, blob.len());
 
     (
         StatusCode::OK,
@@ -25,7 +23,7 @@ pub async fn get_blob(
             (CONTENT_LENGTH, format!("{}", blob.len())),
             (CONTENT_TYPE, "application/octet-stream".to_string()),
         ],
-        Full::from(blob.to_owned()),
+        Full::from(blob),
     )
         .into_response()
 }
@@ -70,7 +68,7 @@ pub async fn patch_uploads(
         [
             (LOCATION, format!("/v2/{}/blobs/uploads/{}", name, uuid)),
             (RANGE, format!("{starting}-{ending}")),
-            (CONTENT_LENGTH, format!("0")),
+            (CONTENT_LENGTH, "0".to_string()),
             (HeaderName::from_static("docker-upload-uuid"), uuid),
         ],
     )
@@ -79,10 +77,10 @@ pub async fn patch_uploads(
 pub async fn finish_uploads(
     Path((name, uuid)): Path<(String, String)>,
     Query(query): Query<std::collections::HashMap<String, String>>,
-    headers: HeaderMap,
+    _headers: HeaderMap,
     body: Bytes,
 ) -> impl IntoResponse {
-    if body.len() > 0 {
+    if !body.is_empty() {
         let current = sqlite::blobs::get(&uuid).await.unwrap();
         let mut new = BytesMut::new();
         new.put(current.to_owned());
@@ -94,13 +92,13 @@ pub async fn finish_uploads(
     sqlite::blobs::update_digest(&uuid, &digest).await.unwrap();
     let blob = sqlite::blobs::get(&digest).await.unwrap();
 
-    tracing::info!("saved blob with digest {} (size: {})", digest,  blob.len());
+    tracing::info!("saved blob with digest {} (size: {})", digest, blob.len());
 
     (
         StatusCode::CREATED,
         [
             (LOCATION, format!("/v2/{}/blobs/{}", name, digest)),
-            (CONTENT_LENGTH, format!("0")),
+            (CONTENT_LENGTH, "0".to_string()),
             (HeaderName::from_static("docker-content-digest"), digest),
         ],
     )
