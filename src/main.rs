@@ -37,16 +37,12 @@ async fn rewrite_request_uri<B>(mut req: Request<B>, next: Next<B>) -> Response 
         .parse()
         .unwrap();
 
-    dbg!(req.method(), req.uri());
-
     next.run(req).await
 }
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-
-    let blobcache: Arc<Mutex<HashMap<String, Bytes>>> = Arc::new(Mutex::new(HashMap::new()));
 
     let rewriter = axum::middleware::from_fn(rewrite_request_uri);
     let router = Router::new().nest(
@@ -70,7 +66,6 @@ async fn main() {
                     .put(api::blob::finish_uploads)
                     .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
             )
-            .layer(Extension(blobcache)),
     );
 
     let app = rewriter.layer(router);

@@ -1,24 +1,22 @@
-use std::collections::HashMap;
-
 use axum::body::Full;
 use axum::extract::{Path, Query};
 use axum::http::header::{HeaderMap, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, RANGE};
 use axum::http::{HeaderName, StatusCode};
 use axum::response::IntoResponse;
-use axum::Extension;
 use bytes::{BufMut, Bytes, BytesMut};
-use std::sync::{Arc, Mutex};
+
+use crate::db::sqlite;
 
 pub async fn get_blob(
     Path((_name, digest)): Path<(String, String)>,
-    Extension(blobcache): Extension<Arc<Mutex<HashMap<String, Bytes>>>>,
 ) -> impl IntoResponse {
-    let cache = blobcache.lock().unwrap();
-    let blob = cache.get(&digest);
-    if blob.is_none() {
+    let blob = sqlite::blobs::get(&digest).await;
+    if blob.is_err() {
         return (StatusCode::NOT_FOUND, "Not Found").into_response();
     }
     let blob = blob.unwrap();
+
+    tracing::info!("serving blob with digest {} (size: {})", digest,  blob.len());
 
     (
         StatusCode::OK,
@@ -46,26 +44,23 @@ pub async fn post_uploads(Path(name): Path<String>) -> impl IntoResponse {
 
 pub async fn patch_uploads(
     Path((name, uuid)): Path<(String, String)>,
-    headers: HeaderMap,
-    Extension(blobcache): Extension<Arc<Mutex<HashMap<String, Bytes>>>>,
+    _headers: HeaderMap,
     body: Bytes,
 ) -> impl IntoResponse {
-    // dbg!(headers);
-    let mut cache = blobcache.lock().unwrap();
-
-    let (starting, ending) = match cache.get(&uuid) {
-        None => {
+    let current = sqlite::blobs::get(&uuid).await;
+    let (starting, ending) = match current {
+        Err(_) => {
             let body_len = body.len();
-            cache.insert(uuid.clone(), body);
+            sqlite::blobs::save(&uuid, &body).await.unwrap();
             (0, body_len)
         }
-        Some(current) => {
+        Ok(current) => {
             let mut new = BytesMut::new();
             let body_len = body.len();
             let current_len = current.len();
             new.put(current.to_owned());
             new.put(body);
-            cache.insert(uuid.clone(), new.into());
+            sqlite::blobs::save(&uuid, &new.into()).await.unwrap();
             (current_len, current_len + body_len)
         }
     };
@@ -81,34 +76,32 @@ pub async fn patch_uploads(
     )
 }
 
-#[axum::debug_handler]
 pub async fn finish_uploads(
     Path((name, uuid)): Path<(String, String)>,
-    Query(digest): Query<std::collections::HashMap<String, String>>,
+    Query(query): Query<std::collections::HashMap<String, String>>,
     headers: HeaderMap,
-    Extension(blobcache): Extension<Arc<Mutex<HashMap<String, Bytes>>>>,
     body: Bytes,
 ) -> impl IntoResponse {
-    let mut cache = blobcache.lock().unwrap();
     if body.len() > 0 {
-        let current = cache.get(&uuid).unwrap();
+        let current = sqlite::blobs::get(&uuid).await.unwrap();
         let mut new = BytesMut::new();
         new.put(current.to_owned());
         new.put(body);
-        cache.insert(uuid.clone(), new.into());
+        sqlite::blobs::save(&uuid, &new.into()).await.unwrap();
     }
 
-    if let Some(data) = cache.remove(&uuid) {
-        cache.insert(digest.get("digest").unwrap().to_string(), data);
-    }
+    let digest = query.get("digest").unwrap().to_string();
+    sqlite::blobs::update_digest(&uuid, &digest).await.unwrap();
+    let blob = sqlite::blobs::get(&digest).await.unwrap();
 
-    dbg!(&name, &uuid, &digest);
+    tracing::info!("saved blob with digest {} (size: {})", digest,  blob.len());
+
     (
         StatusCode::CREATED,
         [
-            (LOCATION, format!("/v2/{}/blobs/uploads/{}", name, uuid)),
+            (LOCATION, format!("/v2/{}/blobs/{}", name, digest)),
             (CONTENT_LENGTH, format!("0")),
-            (HeaderName::from_static("docker-upload-uuid"), uuid),
+            (HeaderName::from_static("docker-content-digest"), digest),
         ],
     )
 }

@@ -6,6 +6,8 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+use crate::db::sqlite;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Manifest {
@@ -70,53 +72,64 @@ pub struct ImageManifestLayer {
 }
 
 pub async fn get(Path((name, reference)): Path<(String, String)>) -> impl IntoResponse {
-    let manifest: Manifest = serde_json::from_str(r#"{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.v2+json","config":{"mediaType":"application/vnd.docker.container.image.v1+json","size":1546,"digest":"sha256:35b811f5c18761eb6bf7c48d934e542188fc601f0c95fcc0b545320f30e57ec7"},"layers":[{"mediaType":"application/vnd.docker.image.rootfs.diff.tar.gzip","size":3374447,"digest":"sha256:63b65145d645c1250c391b2d16ebe53b3747c295ca8ba2fcb6b0cf064a4dc21c"},{"mediaType":"application/vnd.docker.image.rootfs.diff.tar.gzip","size":4218428,"digest":"sha256:84c353bd7b164c886102cd79e89030f830082e64a292d5033318241238ed2514"}]}"#).unwrap();
-
+    let digest = match crate::DIGEST_REGEX.is_match(&reference) {
+        true => reference,
+        false => {
+            tracing::info!("resolving tag: {}:{}", name, reference);
+            let digest =sqlite::tags::get(&name, &reference).await.unwrap();
+            tracing::info!("resolved tag {}:{} to digest {}", name, reference, digest);
+            digest
+        }
+    };
+    let raw = sqlite::manifests::get(&digest).await.unwrap();
     (
         [
             (
                 HeaderName::from_static("docker-content-digest"),
-                "sha256:448aa840670266671338b7ccd9069777be3e5f2bf698c29c71f086b3582cf377",
+                digest,
             ),
             (
                 CONTENT_TYPE,
-                "application/vnd.docker.distribution.manifest.v2+json",
+                "application/vnd.docker.distribution.manifest.v2+json".to_string(),
             ),
             (
                 ACCEPT,
-                "application/vnd.docker.distribution.manifest.v2+json",
+                "application/vnd.docker.distribution.manifest.v2+json".to_string(),
             ),
             (
                 HeaderName::from_static("docker-distribution-api-version"),
-                "registry/2.0",
+                "registry/2.0".to_string(),
             ),
         ],
-        Json(json!(manifest)),
+        raw,
     )
+        .into_response()
 }
 
 pub async fn put(
     Path((name, reference)): Path<(String, String)>,
     body: String,
 ) -> impl IntoResponse {
-    println!("{}", &body);
-
-    let manifest: Manifest = serde_json::from_str(&body).unwrap();
-
-    dbg!(&manifest);
-
-    let normalized = serde_json::to_string(&manifest).unwrap();
-
-    println!("{}", &normalized);
-
-    let hash = sha256::digest(normalized.clone());
+    let hash = sha256::digest(body.clone());
     let digest = format!("sha256:{hash}");
+
+    crate::db::sqlite::manifests::save(&digest, &body)
+        .await
+        .unwrap();
+
+    if !crate::DIGEST_REGEX.is_match(&reference) {
+        crate::db::sqlite::tags::save(&name, &reference, &digest)
+            .await
+            .unwrap();
+    }
+
+    tracing::info!("manifest saved: {}", digest);
 
     (
         StatusCode::CREATED,
         [(
             HeaderName::from_static("docker-content-digest"),
-            dbg!(digest),
+            digest,
         )],
     )
 }

@@ -5,7 +5,6 @@ use axum::Json;
 use serde_json::json;
 
 pub async fn tags(Path(name): Path<String>) -> impl IntoResponse {
-    dbg!(&name);
     let tags = crate::db::sqlite::tags::list(&name).await.unwrap();
 
     (
