@@ -113,5 +113,7 @@ pub async fn cleanup() -> Result<(), RusqliteError> {
 
     trans.commit()?;
 
+    conn.execute("VACUUM", [])?;
+
     Ok(())
 }
