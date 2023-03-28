@@ -2,7 +2,7 @@ use rusqlite::{Connection, Error as RusqliteError};
 
 pub async fn list(repository: &str) -> Result<Vec<String>, RusqliteError> {
     let conn = Connection::open("registry.db")?;
-    let mut statement = conn.prepare("SELECT name FROM tags WHERE repository = ?")?;
+    let mut statement = conn.prepare("SELECT name FROM tags WHERE repository = ? ORDER BY updated DESC")?;
     let rows = statement.query_map([repository], |row| row.get::<usize, String>(0))?;
     rows.into_iter().collect()
 }
@@ -10,8 +10,8 @@ pub async fn list(repository: &str) -> Result<Vec<String>, RusqliteError> {
 pub async fn save(repository: &str, tag: &str, digest: &str) -> Result<(), RusqliteError> {
     let conn = Connection::open("registry.db")?;
     let mut statement =
-        conn.prepare("INSERT INTO tags (repository, name, manifest) VALUES (?, ?, ?)")?;
-    statement.execute([repository, tag, digest])?;
+        conn.prepare("INSERT INTO tags (repository, name, updated, manifest) VALUES (?, ?, ?, ?)")?;
+    statement.execute(rusqlite::params![repository, tag, chrono::Utc::now().timestamp(), digest])?;
 
     Ok(())
 }

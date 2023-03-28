@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS tags (
     name TEXT NOT NULL,
     repository TEXT NOT NULL,
     manifest TEXT NOT NULL,
+    updated INTEGER NOT NULL,
     FOREIGN KEY (repository) REFERENCES repositories (name) ON DELETE CASCADE,
     FOREIGN KEY (manifest) REFERENCES manifests (digest) ON DELETE CASCADE,
     PRIMARY KEY (name, repository) ON CONFLICT REPLACE

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.6.12", features = ["query", "macros"] }
 bytes = "1.4.0"
+chrono = "0.4.24"
 lazy_static = "1.4.0"
 regex = "1.7.2"
 rusqlite = "0.29.0"
