@@ -2,13 +2,14 @@ use axum::extract::DefaultBodyLimit;
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::Response;
-use axum::{routing, Router, ServiceExt};
+use axum::{routing, Extension, Router, ServiceExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 use tower::Layer;
 
 pub mod api;
 pub mod db;
+pub mod ui;
 
 lazy_static! {
     static ref URI_NAME_REGEX: Regex =
@@ -40,34 +41,51 @@ async fn rewrite_request_uri<B>(mut req: Request<B>, next: Next<B>) -> Response 
 async fn main() {
     tracing_subscriber::fmt::init();
 
+    let tera = match tera::Tera::new("src/ui/templates/**/*.html") {
+        Ok(t) => t,
+        Err(e) => {
+            println!("Parsing error(s): {}", e);
+            ::std::process::exit(1);
+        }
+    };
+    for t in tera.get_template_names().into_iter() {
+        tracing::info!("loaded template {}", t);
+    }
+
     let rewriter = axum::middleware::from_fn(rewrite_request_uri);
-    let router = Router::new().nest(
-        "/v2",
-        Router::new()
-            .route("/", routing::get(api::base))
-            .route("/_catalog", routing::get(api::catalog))
-            .route("/:name/tags/list", routing::get(api::tags))
-            .route(
-                "/:name/manifests/:reference",
-                routing::get(api::manifests::get)
-                    .put(api::manifests::put)
-                    .delete(api::manifests::delete),
-            )
-            .route(
-                "/:name/blobs/uploads/",
-                routing::post(api::blob::post_uploads),
-            )
-            .route(
-                "/:name/blobs/:digest",
-                routing::get(api::blob::get_blob).head(api::blob::head_blob).delete(api::blob::delete),
-            )
-            .route(
-                "/:name/blobs/uploads/:uuid",
-                routing::patch(api::blob::patch_uploads)
-                    .put(api::blob::finish_uploads)
-                    .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
-            )
-    );
+    let router = Router::new()
+        .route("/", routing::get(ui::index))
+        .route("/*name", routing::get(ui::repo))
+        .nest(
+            "/v2",
+            Router::new()
+                .route("/", routing::get(api::base))
+                .route("/_catalog", routing::get(api::catalog))
+                .route("/:name/tags/list", routing::get(api::tags))
+                .route(
+                    "/:name/manifests/:reference",
+                    routing::get(api::manifests::get)
+                        .put(api::manifests::put)
+                        .delete(api::manifests::delete),
+                )
+                .route(
+                    "/:name/blobs/uploads/",
+                    routing::post(api::blob::post_uploads),
+                )
+                .route(
+                    "/:name/blobs/:digest",
+                    routing::get(api::blob::get_blob)
+                        .head(api::blob::head_blob)
+                        .delete(api::blob::delete),
+                )
+                .route(
+                    "/:name/blobs/uploads/:uuid",
+                    routing::patch(api::blob::patch_uploads)
+                        .put(api::blob::finish_uploads)
+                        .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
+                ),
+        )
+        .layer(Extension(tera));
 
     let app = rewriter.layer(router);
 

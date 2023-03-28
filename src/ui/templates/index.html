@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        {% for category in categories %}
+            <p><a href="{{ category }}/">{{ category }}/</a></p>
+        {% endfor %}
+        {% for repo in repos %}
+            <p><a href="{{ repo }}">{{ repo }}</a></p>
+        {% endfor %}
+    </body>
+</html>
