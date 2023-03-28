@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS repositories (
 
 CREATE TABLE IF NOT EXISTS manifests (
     digest TEXT NOT NULL PRIMARY KEY ON CONFLICT IGNORE,
-    value TEXT NOT NULL
+    repository TEXT NOT NULL,
+    value TEXT NOT NULL,
+    FOREIGN KEY (repository) REFERENCES repositories (name) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS blobs (
@@ -19,4 +21,12 @@ CREATE TABLE IF NOT EXISTS tags (
     FOREIGN KEY (repository) REFERENCES repositories (name) ON DELETE CASCADE,
     FOREIGN KEY (manifest) REFERENCES manifests (digest) ON DELETE CASCADE,
     PRIMARY KEY (name, repository) ON CONFLICT REPLACE
+);
+
+CREATE TABLE IF NOT EXISTS manifest_blobs (
+    manifest TEXT NOT NULL,
+    blob TEXT NOT NULL,
+    CONSTRAINT fk_manifest FOREIGN KEY (manifest) REFERENCES manifests (digest) ON DELETE CASCADE,
+    CONSTRAINT fk_blob FOREIGN KEY (blob) REFERENCES blobs (digest) ON DELETE CASCADE,
+    PRIMARY KEY (manifest, blob) ON CONFLICT IGNORE
 );

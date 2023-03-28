@@ -40,3 +40,60 @@ pub async fn update_digest(old_digest: &str, new_digest: &str) -> Result<(), Rus
 
     Ok(())
 }
+
+pub async fn associate(manifest_digest: &str, layer_digest: &str) -> Result<(), RusqliteError> {
+    let conn = Connection::open("registry.db")?;
+
+    let mut statement = conn.prepare("INSERT INTO manifest_blobs(manifest, blob) VALUES (?, ?)")?;
+    statement.execute([manifest_digest, layer_digest])?;
+    tracing::info!("associated {} -> {}", manifest_digest, layer_digest);
+
+    Ok(())
+}
+
+pub async fn disassociate(repository: &str, layer_digest: &str) -> Result<(), RusqliteError> {
+    let conn = Connection::open("registry.db")?;
+
+    let mut statement = conn.prepare("DELETE FROM manifest_blobs WHERE blob = ? AND manifest IN (SELECT digest FROM manifests WHERE repository = ?) RETURNING manifest, blob")?;
+    let mut deleted = statement.query([dbg!(layer_digest), repository])?;
+
+    loop {
+        let d = deleted.next()?;
+        match d {
+            Some(d) => {
+                let manifest: String = d.get(0)?;
+                let blob: String = d.get(1)?;
+
+                tracing::info!("deleted association {} -> {}", manifest, blob);
+            }
+            None => {
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn cleanup() -> Result<(), RusqliteError> {
+    let mut conn = Connection::open("registry.db")?;
+    let trans = conn.transaction()?;
+
+    // delete blobs we don't have a manifest for
+    trans.execute("DELETE FROM blobs WHERE digest IN (SELECT blob FROM manifest_blobs WHERE manifest NOT IN (SELECT digest FROM manifests))", [])?;
+    // delete assocations we don't have a manifest for
+    trans.execute(
+        "DELETE FROM manifest_blobs WHERE manifest NOT IN (SELECT digest FROM manifests)",
+        [],
+    )?;
+
+    // delete blobs we don't have an association for
+    trans.execute(
+        "DELETE FROM blobs WHERE digest NOT IN (SELECT blob FROM manifest_blobs)",
+        [],
+    )?;
+
+    trans.commit()?;
+
+    Ok(())
+}

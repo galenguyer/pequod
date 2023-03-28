@@ -79,7 +79,7 @@ pub async fn get(Path((name, reference)): Path<(String, String)>) -> impl IntoRe
             digest
         }
     };
-    let raw = sqlite::manifests::get(&digest).await.unwrap();
+    let raw = sqlite::manifests::get(&name, &digest).await.unwrap();
     (
         [
             (HeaderName::from_static("docker-content-digest"), digest),
@@ -108,11 +108,11 @@ pub async fn put(
     let hash = sha256::digest(body.clone());
     let digest = format!("sha256:{hash}");
 
-    sqlite::manifests::save(&digest, &body)
+    sqlite::repositories::save(&name).await.unwrap();
+    sqlite::manifests::save(&name, &digest, &body)
         .await
         .unwrap();
 
-    sqlite::repositories::save(&name).await.unwrap();
     if !crate::DIGEST_REGEX.is_match(&reference) {
         sqlite::tags::save(&name, &reference, &digest)
             .await
@@ -121,8 +121,42 @@ pub async fn put(
 
     tracing::info!("manifest saved: {}", digest);
 
+    let parsed = serde_json::from_str::<Manifest>(&body);
+    if let Ok(manifest) = parsed {
+        match manifest {
+            Manifest::Image(image) => {
+                tracing::info!(
+                    "associating layer {} with manifest {}",
+                    image.config.digest,
+                    digest
+                );
+                if let Err(e) = sqlite::blobs::associate(&digest, &image.config.digest).await {
+                    tracing::error!("failed to associate layer with manifest: {}", e);
+                }
+
+                for layer in image.layers {
+                    tracing::info!(
+                        "associating layer {} with manifest {}",
+                        layer.digest,
+                        digest
+                    );
+                    if let Err(e) = sqlite::blobs::associate(&digest, &layer.digest).await {
+                        tracing::error!("failed to associate layer with manifest: {}", e);
+                    }
+                }
+            }
+            Manifest::List(_) => {
+                tracing::warn!("manifest list not implemented")
+            }
+        }
+    }
+
     (
         StatusCode::CREATED,
         [(HeaderName::from_static("docker-content-digest"), digest)],
     )
+}
+
+pub async fn delete(Path((name, reference)): Path<(String, String)>) -> impl IntoResponse {
+    sqlite::manifests::delete(&name, &reference).await.unwrap();
 }

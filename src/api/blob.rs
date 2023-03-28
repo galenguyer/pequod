@@ -103,3 +103,9 @@ pub async fn finish_uploads(
         ],
     )
 }
+
+pub async fn delete(Path((name, digest)): Path<(String, String)>) -> impl IntoResponse {
+    sqlite::blobs::disassociate(&name, &digest).await.unwrap();
+
+    (StatusCode::ACCEPTED, [(CONTENT_LENGTH, "0".to_string())]).into_response()
+}
