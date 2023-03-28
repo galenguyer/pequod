@@ -98,16 +98,18 @@ pub async fn cleanup() -> Result<(), RusqliteError> {
     let trans = conn.transaction()?;
 
     // delete assocations we don't have a manifest for
-    trans.execute(
+    let assocs = trans.execute(
         "DELETE FROM manifest_blobs WHERE manifest NOT IN (SELECT digest FROM manifests)",
         [],
     )?;
+    tracing::info!("deleted {} orphaned assocations", assocs);
 
     // delete blobs we don't have an association for
-    trans.execute(
+    let blobs = trans.execute(
         "DELETE FROM blobs WHERE digest NOT IN (SELECT blob FROM manifest_blobs)",
         [],
     )?;
+    tracing::info!("deleted {} orphaned blobs", blobs);
 
     trans.commit()?;
 
