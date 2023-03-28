@@ -97,8 +97,6 @@ pub async fn cleanup() -> Result<(), RusqliteError> {
     let mut conn = Connection::open("registry.db")?;
     let trans = conn.transaction()?;
 
-    // delete blobs we don't have a manifest for
-    trans.execute("DELETE FROM blobs WHERE digest IN (SELECT blob FROM manifest_blobs WHERE manifest NOT IN (SELECT digest FROM manifests))", [])?;
     // delete assocations we don't have a manifest for
     trans.execute(
         "DELETE FROM manifest_blobs WHERE manifest NOT IN (SELECT digest FROM manifests)",
