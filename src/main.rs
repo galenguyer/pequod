@@ -49,19 +49,24 @@ async fn main() {
             .route("/:name/tags/list", routing::get(api::tags))
             .route(
                 "/:name/manifests/:reference",
-                routing::get(api::manifests::get).put(api::manifests::put).delete(api::manifests::delete),
+                routing::get(api::manifests::get)
+                    .put(api::manifests::put)
+                    .delete(api::manifests::delete),
             )
             .route(
                 "/:name/blobs/uploads/",
                 routing::post(api::blob::post_uploads),
             )
-            .route("/:name/blobs/:digest", routing::get(api::blob::get_blob).delete(api::blob::delete))
+            .route(
+                "/:name/blobs/:digest",
+                routing::get(api::blob::get_blob).head(api::blob::head_blob).delete(api::blob::delete),
+            )
             .route(
                 "/:name/blobs/uploads/:uuid",
                 routing::patch(api::blob::patch_uploads)
                     .put(api::blob::finish_uploads)
                     .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
-            ),
+            )
     );
 
     let app = rewriter.layer(router);

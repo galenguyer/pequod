@@ -22,6 +22,24 @@ pub async fn get(digest: &str) -> Result<Bytes, RusqliteError> {
     Ok(result)
 }
 
+pub async fn length(digest: &str) -> Result<usize, RusqliteError> {
+    let conn = Connection::open("registry.db")?;
+    let mut statement = conn.prepare("SELECT length(value) FROM blobs WHERE digest = ?")?;
+    let mut rows = statement.query([digest])?;
+
+    let row = rows.next()?;
+
+    let result = match row {
+        Some(row) => row.get::<usize, usize>(0)?,
+        None => {
+            return Err(RusqliteError::QueryReturnedNoRows);
+        }
+    };
+
+    Ok(result)
+
+}
+
 pub async fn save(digest: &str, value: &Bytes) -> Result<(), RusqliteError> {
     let conn = Connection::open("registry.db")?;
     let mut statement = conn.prepare("INSERT INTO blobs (digest, value) VALUES (?, ?)")?;

@@ -28,6 +28,26 @@ pub async fn get_blob(Path((_name, digest)): Path<(String, String)>) -> impl Int
         .into_response()
 }
 
+pub async fn head_blob(Path((_name, digest)): Path<(String, String)>) -> impl IntoResponse {
+    let blob = sqlite::blobs::length(&digest).await;
+    if blob.is_err() {
+        return (StatusCode::NOT_FOUND, "Not Found").into_response();
+    }
+    let size = blob.unwrap();
+
+    tracing::info!("giving size of blob with digest {} (size: {})", digest, size);
+
+    (
+        StatusCode::OK,
+        [
+            (HeaderName::from_static("docker-content-digest"), digest),
+            (CONTENT_LENGTH, format!("{}", size)),
+            (CONTENT_TYPE, "application/octet-stream".to_string()),
+        ],
+    )
+        .into_response()
+}
+
 pub async fn post_uploads(Path(name): Path<String>) -> impl IntoResponse {
     let uuid = uuid::Uuid::new_v4().as_hyphenated().to_string();
 
