@@ -11,7 +11,7 @@ pub async fn tags(Path(name): Path<String>) -> impl IntoResponse {
         StatusCode::OK,
         Json(json!({
             "name": name.clone(),
-            "tags": tags
+            "tags": tags.into_iter().map(|t| t.name).collect::<Vec<String>>()
         })),
     )
 }

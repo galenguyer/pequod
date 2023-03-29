@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Container Registry</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Admin</h2>
+    <p>Current registry size on disk: {{ size }}</p>
+    {% if old_size %}
+    <p>Previous registry size on disk: {{ old_size }}</p>
+    {% else %}
+    <form action="/admin/cleanup" method="post">
+        <button name="foo" value="upvote">Clean Up</button>
+    </form>
+    {% endif %}
+</body>
+
+</html>

@@ -37,7 +37,6 @@ pub async fn length(digest: &str) -> Result<usize, RusqliteError> {
     };
 
     Ok(result)
-
 }
 
 pub async fn save(digest: &str, value: &Bytes) -> Result<(), RusqliteError> {
@@ -89,31 +88,6 @@ pub async fn disassociate(repository: &str, layer_digest: &str) -> Result<(), Ru
             }
         }
     }
-
-    Ok(())
-}
-
-pub async fn cleanup() -> Result<(), RusqliteError> {
-    let mut conn = Connection::open("registry.db")?;
-    let trans = conn.transaction()?;
-
-    // delete assocations we don't have a manifest for
-    let assocs = trans.execute(
-        "DELETE FROM manifest_blobs WHERE manifest NOT IN (SELECT digest FROM manifests)",
-        [],
-    )?;
-    tracing::info!("deleted {} orphaned assocations", assocs);
-
-    // delete blobs we don't have an association for
-    let blobs = trans.execute(
-        "DELETE FROM blobs WHERE digest NOT IN (SELECT blob FROM manifest_blobs)",
-        [],
-    )?;
-    tracing::info!("deleted {} orphaned blobs", blobs);
-
-    trans.commit()?;
-
-    conn.execute("VACUUM", [])?;
 
     Ok(())
 }

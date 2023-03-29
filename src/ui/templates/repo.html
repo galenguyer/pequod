@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html>
 
+<head>
+    <title>Container Registry</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+
 <body>
     <h2>{{ name }}</h2>
     {% for category in categories %}
@@ -10,8 +19,12 @@
     <p><a href="/{{ name }}/{{ repo }}">{{ repo }}</a></p>
     {% endfor %}
     {% for tag in tags %}
-    <p>{{ host }}/{{ name }}:{{ tag }}</p>
+    <p>{{ host }}/{{ name }}:{{ tag.name }} (updated
+        <script>document.write(new Date(Date.parse('{{ tag.updated }}')).toLocaleString())</script>)
+    </p>
+    <b>{{ sizes[tag.name] }}</b>
     {% endfor %}
+
 </body>
 
 </html>

@@ -55,6 +55,8 @@ async fn main() {
     let rewriter = axum::middleware::from_fn(rewrite_request_uri);
     let router = Router::new()
         .route("/", routing::get(ui::index))
+        .route("/admin", routing::get(ui::admin))
+        .route("/admin/cleanup", routing::post(ui::cleanup))
         .route("/*name", routing::get(ui::repo))
         .nest(
             "/v2",
