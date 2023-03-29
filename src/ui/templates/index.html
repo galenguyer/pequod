@@ -6,17 +6,48 @@
     <style>
         body {
             font-family: sans-serif;
+            max-width: 960px;
+            margin: auto;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            text-align: center;
+            font-weight: 400;
+        }
+
+        a {
+            text-decoration: none;
+            color: #000;
+            border-bottom: dotted 1px transparent;
+            transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+            -moz-transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+            -webkit-transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+            -ms-transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+        }
+
+        a:hover {
+            color: rgba(0, 0, 0, 0.7);
+            border-bottom: dotted 1px rgba(0, 0, 0, 0.35);
         }
     </style>
 </head>
 
 <body>
+    <h1>Container Registry</h1>
+    {% if categories | length > 0 %}
     {% for category in categories %}
-    <p><a href="{{ category }}/">{{ category }}/</a></p>
+    <p style="text-align: center;"><a href="{{ category }}/">{{ category }}/</a></p>
     {% endfor %}
+    {% endif %}
+
+    {% if repos | length > 0 %}
     {% for repo in repos %}
-    <p><a href="{{ repo }}">{{ repo }}</a></p>
+    <p style="text-align: center;"><a href="{{ repo }}">{{ repo }}</a></p>
     {% endfor %}
+    {% endif %}
 </body>
 
 </html>

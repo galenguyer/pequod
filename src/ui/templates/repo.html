@@ -6,25 +6,94 @@
     <style>
         body {
             font-family: sans-serif;
+            max-width: 960px;
+            margin: auto;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            text-align: center;
+            font-weight: 400;
+        }
+
+        a {
+            text-decoration: none;
+            color: #000;
+            border-bottom: dotted 1px transparent;
+            transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+            -moz-transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+            -webkit-transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+            -ms-transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+        }
+
+        a:hover {
+            color: rgba(0, 0, 0, 0.7);
+            border-bottom: dotted 1px rgba(0, 0, 0, 0.35);
         }
     </style>
 </head>
 
 <body>
-    <h2>{{ name }}</h2>
+    <h2 style="font-size: 1.8em;">{{ name }}</h2>
+    {% if categories | length > 0 %}
     {% for category in categories %}
-    <p><a href="{{ category }}/">{{ category }}/</a></p>
+    <p style="text-align: center;"><a href="/{{ name }}/{{ category }}/">{{ category }}/</a></p>
     {% endfor %}
+    {% endif %}
+
+    {% if repos | length > 0 %}
     {% for repo in repos %}
-    <p><a href="/{{ name }}/{{ repo }}">{{ repo }}</a></p>
+    <p style="text-align: center;"><a href="/{{ name }}/{{ repo }}">{{ repo }}</a></p>
     {% endfor %}
-    {% for tag in tags %}
-    <p>{{ host }}/{{ name }}:{{ tag.name }} (updated
-        <script>document.write(new Date(Date.parse('{{ tag.updated }}')).toLocaleString())</script>)
-    </p>
-    <b>{{ sizes[tag.name] }}</b>
+    {% endif %}
+
+    {% for group in groupings %}
+    <div>
+        <h4><a style="cursor: pointer;" title="(click to copy)" onclick="copyRef(':{{ group.tags[0] }}')">
+                {{ host }}/{{ name }}:{{ group.tags[0] }}
+            </a></h4>
+
+        {% if group.tags | length > 1 %}
+        <div>
+            {% for tag in group.tags %}
+            <span style="white-space: nowrap;">// <a style="cursor: pointer;" title="(click to copy)"
+                    onclick="copyRef(':{{ tag }}')">
+                    {{ tag }}
+                </a></span>
+            {% endfor %}
+        </div>
+        <br />
+        {% endif %}
+        <div style="display: flex; justify-content: space-around;">
+            <span>
+                last updated:
+                <script>document.write(new Date(Date.parse('{{ group.updated }}')).toLocaleString())</script>
+            </span>
+            <span>
+                size: <b>{{ group.size }}</b>
+            </span>
+        </div>
+        <p style="text-align: center;"><i><a style="cursor: pointer;" title="(click to copy)"
+                    onclick="copyRef('@{{ group.manifest }}')">digest: {{
+                    group.manifest }}</a></i></p>
+    </div>
+    <hr />
     {% endfor %}
 
+    <script>
+        function copyRef(tag) {
+            var elem = document.createElement("textarea");
+            document.body.appendChild(elem);
+            elem.value = "{{ host }}/{{ name }}" + tag;
+            elem.select();
+            elem.setSelectionRange(0, 99999); /*For mobile devices*/
+            document.execCommand("copy");
+            document.body.removeChild(elem);
+            return true;
+        }
+    </script>
 </body>
 
 </html>
