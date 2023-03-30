@@ -11,8 +11,10 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tera::{Context, Tera};
 
+use crate::db;
+
 pub async fn index(Extension(tera): Extension<Tera>) -> impl IntoResponse {
-    let repos: Vec<String> = crate::db::sqlite::repositories::list()
+    let repos: Vec<String> = db::repositories::list()
         .await
         .unwrap()
         .into_iter()
@@ -63,7 +65,7 @@ pub async fn repo(
     Extension(tera): Extension<Tera>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
-    let repos: Vec<String> = crate::db::sqlite::repositories::list()
+    let repos: Vec<String> = db::repositories::list()
         .await
         .unwrap()
         .into_iter()
@@ -83,7 +85,7 @@ pub async fn repo(
         .map(|r| r.to_string())
         .collect::<HashSet<String>>();
 
-    let tags = crate::db::sqlite::tags::list(&name).await.unwrap();
+    let tags = db::tags::list(&name).await.unwrap();
     let mut groupings: HashMap<String, TagGrouping> = HashMap::new();
     for tag in tags {
         match groupings.get_mut(&tag.manifest) {
@@ -106,7 +108,7 @@ pub async fn repo(
                     TagGrouping {
                         tags: vec![tag.name.clone()],
                         size: {
-                            let size = crate::db::sqlite::tags::get_size(&tag.manifest)
+                            let size = db::tags::get_size(&tag.manifest)
                                 .await
                                 .unwrap_or_default();
                             ByteSize::b(size as u64).to_string_as(true)
@@ -163,7 +165,7 @@ pub async fn cleanup(Extension(tera): Extension<Tera>) -> impl IntoResponse {
     let old_size = std::fs::metadata("registry.db").unwrap().len();
     let old_size = ByteSize::b(old_size).to_string_as(true);
 
-    crate::db::sqlite::cleanup().await.unwrap();
+    db::cleanup().await.unwrap();
 
     let size = std::fs::metadata("registry.db").unwrap().len();
     let size = ByteSize::b(size).to_string_as(true);

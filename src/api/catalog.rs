@@ -7,6 +7,8 @@ use axum::response::IntoResponse;
 use axum::Json;
 use serde_json::json;
 
+use crate::db;
+
 /// Retrieve a sorted, json list of repositories available in the registry.
 /// ##  Catalog Fetch
 /// ```txt
@@ -84,7 +86,7 @@ use serde_json::json;
 ///
 /// [Reference](https://docs.docker.com/registry/spec/api/#get-catalog)
 pub async fn catalog() -> impl IntoResponse {
-    let repos = crate::db::sqlite::repositories::list().await;
+    let repos = db::repositories::list().await;
     let names = repos
         .unwrap()
         .iter()

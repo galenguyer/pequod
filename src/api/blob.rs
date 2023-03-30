@@ -5,10 +5,10 @@ use axum::http::{HeaderName, StatusCode};
 use axum::response::IntoResponse;
 use bytes::{BufMut, Bytes, BytesMut};
 
-use crate::db::sqlite;
+use crate::db;
 
 pub async fn get_blob(Path((_name, digest)): Path<(String, String)>) -> impl IntoResponse {
-    let blob = sqlite::blobs::get(&digest).await;
+    let blob = db::blobs::get(&digest).await;
     if blob.is_err() {
         return (StatusCode::NOT_FOUND, "Not Found").into_response();
     }
@@ -29,7 +29,7 @@ pub async fn get_blob(Path((_name, digest)): Path<(String, String)>) -> impl Int
 }
 
 pub async fn head_blob(Path((_name, digest)): Path<(String, String)>) -> impl IntoResponse {
-    let blob = sqlite::blobs::length(&digest).await;
+    let blob = db::blobs::length(&digest).await;
     if blob.is_err() {
         return (StatusCode::NOT_FOUND, "Not Found").into_response();
     }
@@ -65,11 +65,11 @@ pub async fn patch_uploads(
     _headers: HeaderMap,
     body: Bytes,
 ) -> impl IntoResponse {
-    let current = sqlite::blobs::get(&uuid).await;
+    let current = db::blobs::get(&uuid).await;
     let (starting, ending) = match current {
         Err(_) => {
             let body_len = body.len();
-            sqlite::blobs::save(&uuid, &body).await.unwrap();
+            db::blobs::save(&uuid, &body).await.unwrap();
             (0, body_len)
         }
         Ok(current) => {
@@ -78,7 +78,7 @@ pub async fn patch_uploads(
             let current_len = current.len();
             new.put(current.to_owned());
             new.put(body);
-            sqlite::blobs::save(&uuid, &new.into()).await.unwrap();
+            db::blobs::save(&uuid, &new.into()).await.unwrap();
             (current_len, current_len + body_len)
         }
     };
@@ -101,16 +101,16 @@ pub async fn finish_uploads(
     body: Bytes,
 ) -> impl IntoResponse {
     if !body.is_empty() {
-        let current = sqlite::blobs::get(&uuid).await.unwrap();
+        let current = db::blobs::get(&uuid).await.unwrap();
         let mut new = BytesMut::new();
         new.put(current.to_owned());
         new.put(body);
-        sqlite::blobs::save(&uuid, &new.into()).await.unwrap();
+        db::blobs::save(&uuid, &new.into()).await.unwrap();
     }
 
     let digest = query.get("digest").unwrap().to_string();
-    sqlite::blobs::update_digest(&uuid, &digest).await.unwrap();
-    let blob = sqlite::blobs::get(&digest).await.unwrap();
+    db::blobs::update_digest(&uuid, &digest).await.unwrap();
+    let blob = db::blobs::get(&digest).await.unwrap();
 
     tracing::info!("saved blob with digest {} (size: {})", digest, blob.len());
 
@@ -125,7 +125,7 @@ pub async fn finish_uploads(
 }
 
 pub async fn delete(Path((name, digest)): Path<(String, String)>) -> impl IntoResponse {
-    sqlite::blobs::disassociate(&name, &digest).await.unwrap();
+    db::blobs::disassociate(&name, &digest).await.unwrap();
 
     (StatusCode::ACCEPTED, [(CONTENT_LENGTH, "0".to_string())]).into_response()
 }

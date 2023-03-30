@@ -4,8 +4,10 @@ use axum::response::IntoResponse;
 use axum::Json;
 use serde_json::json;
 
+use crate::db;
+
 pub async fn tags(Path(name): Path<String>) -> impl IntoResponse {
-    let tags = crate::db::sqlite::tags::list(&name).await.unwrap();
+    let tags = db::tags::list(&name).await.unwrap();
 
     (
         StatusCode::OK,

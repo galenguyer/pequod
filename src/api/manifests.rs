@@ -4,7 +4,7 @@ use axum::http::{HeaderName, StatusCode};
 use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 
-use crate::db::sqlite;
+use crate::db;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
@@ -74,12 +74,12 @@ pub async fn get(Path((name, reference)): Path<(String, String)>) -> impl IntoRe
         true => reference,
         false => {
             tracing::info!("resolving tag: {}:{}", name, reference);
-            let digest = sqlite::tags::get(&name, &reference).await.unwrap();
+            let digest = db::tags::get(&name, &reference).await.unwrap();
             tracing::info!("resolved tag {}:{} to digest {}", name, reference, digest);
             digest
         }
     };
-    let raw = sqlite::manifests::get(&name, &digest).await.unwrap();
+    let raw = db::manifests::get(&name, &digest).await.unwrap();
     (
         [
             (HeaderName::from_static("docker-content-digest"), digest),
@@ -108,13 +108,13 @@ pub async fn put(
     let hash = sha256::digest(body.clone());
     let digest = format!("sha256:{hash}");
 
-    sqlite::repositories::save(&name).await.unwrap();
-    sqlite::manifests::save(&name, &digest, &body)
+    db::repositories::save(&name).await.unwrap();
+    db::manifests::save(&name, &digest, &body)
         .await
         .unwrap();
 
     if !crate::DIGEST_REGEX.is_match(&reference) {
-        sqlite::tags::save(&name, &reference, &digest)
+        db::tags::save(&name, &reference, &digest)
             .await
             .unwrap();
     }
@@ -130,7 +130,7 @@ pub async fn put(
                     image.config.digest,
                     digest
                 );
-                if let Err(e) = sqlite::blobs::associate(&digest, &image.config.digest).await {
+                if let Err(e) = db::blobs::associate(&digest, &image.config.digest).await {
                     tracing::error!("failed to associate layer with manifest: {}", e);
                 }
 
@@ -140,7 +140,7 @@ pub async fn put(
                         layer.digest,
                         digest
                     );
-                    if let Err(e) = sqlite::blobs::associate(&digest, &layer.digest).await {
+                    if let Err(e) = db::blobs::associate(&digest, &layer.digest).await {
                         tracing::error!("failed to associate layer with manifest: {}", e);
                     }
                 }
@@ -158,5 +158,5 @@ pub async fn put(
 }
 
 pub async fn delete(Path((name, reference)): Path<(String, String)>) -> impl IntoResponse {
-    sqlite::manifests::delete(&name, &reference).await.unwrap();
+    db::manifests::delete(&name, &reference).await.unwrap();
 }
