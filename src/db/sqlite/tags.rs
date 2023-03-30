@@ -1,13 +1,6 @@
+use crate::db::Tag;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{Connection, Error as RusqliteError};
-use serde::Serialize;
-
-#[derive(Debug, Serialize)]
-pub struct Tag {
-    pub name: String,
-    pub updated: chrono::DateTime<Utc>,
-    pub manifest: String,
-}
 
 pub async fn list(repository: &str) -> Result<Vec<Tag>, RusqliteError> {
     let conn = Connection::open("registry.db")?;
@@ -41,7 +34,7 @@ pub async fn save(repository: &str, tag: &str, digest: &str) -> Result<(), Rusql
     Ok(())
 }
 
-pub async fn get(repository: &str, tag: &str) -> Result<String, RusqliteError> {
+pub async fn get_manifest(repository: &str, tag: &str) -> Result<String, RusqliteError> {
     let conn = Connection::open("registry.db")?;
     let mut statement =
         conn.prepare("SELECT manifest FROM tags WHERE repository = ? AND name = ?")?;

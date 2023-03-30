@@ -13,6 +13,7 @@ use tera::{Context, Tera};
 
 use crate::db;
 
+#[async_backtrace::framed]
 pub async fn index(Extension(tera): Extension<Tera>) -> impl IntoResponse {
     let repos: Vec<String> = db::repositories::list()
         .await
@@ -24,8 +25,8 @@ pub async fn index(Extension(tera): Extension<Tera>) -> impl IntoResponse {
     let categories = {
         let mut c = repos
             .iter()
-            .filter(|r| r.contains("/"))
-            .map(|r| r.split("/").next().unwrap().to_string())
+            .filter(|r| r.contains('/'))
+            .map(|r| r.split('/').next().unwrap().to_string())
             .collect::<Vec<String>>();
         c.dedup();
         c.sort();
@@ -35,7 +36,7 @@ pub async fn index(Extension(tera): Extension<Tera>) -> impl IntoResponse {
     let repos = {
         let mut r = repos
             .iter()
-            .filter(|r| !r.contains("/"))
+            .filter(|r| !r.contains('/'))
             .map(|r| r.to_string())
             .collect::<Vec<String>>();
         r.dedup();
@@ -60,6 +61,8 @@ struct TagGrouping {
     manifest: String,
     updated: DateTime<Utc>,
 }
+
+#[async_backtrace::framed]
 pub async fn repo(
     Path(name): Path<String>,
     Extension(tera): Extension<Tera>,
@@ -70,18 +73,18 @@ pub async fn repo(
         .unwrap()
         .into_iter()
         .map(|r| r.name)
-        .filter(|r| r.contains("/") && r.starts_with(&name))
+        .filter(|r| r.contains('/') && r.starts_with(&name))
         .map(|r| r.replace(&name, "").trim_start_matches('/').to_string())
         .collect();
 
     let categories = repos
         .iter()
-        .filter(|r| r.contains("/"))
-        .map(|r| r.split("/").next().unwrap().to_string())
+        .filter(|r| r.contains('/'))
+        .map(|r| r.split('/').next().unwrap().to_string())
         .collect::<HashSet<String>>();
     let repos = repos
         .iter()
-        .filter(|r| !r.contains("/"))
+        .filter(|r| !r.contains('/'))
         .map(|r| r.to_string())
         .collect::<HashSet<String>>();
 
@@ -108,9 +111,7 @@ pub async fn repo(
                     TagGrouping {
                         tags: vec![tag.name.clone()],
                         size: {
-                            let size = db::tags::get_size(&tag.manifest)
-                                .await
-                                .unwrap_or_default();
+                            let size = db::tags::get_size(&tag.manifest).await.unwrap_or_default();
                             ByteSize::b(size as u64).to_string_as(true)
                         },
                         manifest: tag.manifest.clone(),

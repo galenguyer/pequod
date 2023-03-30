@@ -35,7 +35,11 @@ pub async fn head_blob(Path((_name, digest)): Path<(String, String)>) -> impl In
     }
     let size = blob.unwrap();
 
-    tracing::info!("giving size of blob with digest {} (size: {})", digest, size);
+    tracing::info!(
+        "giving size of blob with digest {} (size: {})",
+        digest,
+        size
+    );
 
     (
         StatusCode::OK,

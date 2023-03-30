@@ -1,10 +1,6 @@
 use rusqlite::{Connection, Error as RusqliteError};
-use serde::Serialize;
 
-#[derive(Debug, Serialize)]
-pub struct Repository {
-    pub name: String,
-}
+use crate::db::Repository;
 
 pub async fn list() -> Result<Vec<Repository>, RusqliteError> {
     let conn = Connection::open("registry.db")?;

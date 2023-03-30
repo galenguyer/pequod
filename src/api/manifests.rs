@@ -74,7 +74,7 @@ pub async fn get(Path((name, reference)): Path<(String, String)>) -> impl IntoRe
         true => reference,
         false => {
             tracing::info!("resolving tag: {}:{}", name, reference);
-            let digest = db::tags::get(&name, &reference).await.unwrap();
+            let digest = db::tags::get_manifest(&name, &reference).await.unwrap();
             tracing::info!("resolved tag {}:{} to digest {}", name, reference, digest);
             digest
         }
@@ -109,14 +109,10 @@ pub async fn put(
     let digest = format!("sha256:{hash}");
 
     db::repositories::save(&name).await.unwrap();
-    db::manifests::save(&name, &digest, &body)
-        .await
-        .unwrap();
+    db::manifests::save(&name, &digest, &body).await.unwrap();
 
     if !crate::DIGEST_REGEX.is_match(&reference) {
-        db::tags::save(&name, &reference, &digest)
-            .await
-            .unwrap();
+        db::tags::save(&name, &reference, &digest).await.unwrap();
     }
 
     tracing::info!("manifest saved: {}", digest);
@@ -159,4 +155,5 @@ pub async fn put(
 
 pub async fn delete(Path((name, reference)): Path<(String, String)>) -> impl IntoResponse {
     db::manifests::delete(&name, &reference).await.unwrap();
+    db::cleanup().await.unwrap();
 }

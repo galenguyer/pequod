@@ -18,6 +18,7 @@ lazy_static! {
         Regex::new(r"^(?P<algorithm>[A-Za-z0-9_+.-]+):(?P<hex>[A-Fa-f0-9]+)$").unwrap();
 }
 
+#[async_backtrace::framed]
 async fn rewrite_request_uri<B>(mut req: Request<B>, next: Next<B>) -> Response {
     let captures = match URI_NAME_REGEX.captures(req.uri().path()) {
         Some(captures) => captures,
@@ -38,7 +39,12 @@ async fn rewrite_request_uri<B>(mut req: Request<B>, next: Next<B>) -> Response 
 }
 
 #[tokio::main]
+#[async_backtrace::framed]
 async fn main() {
+    dotenvy::dotenv().ok();
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
     tracing_subscriber::fmt::init();
 
     let tera = match tera::Tera::new("src/ui/templates/**/*.html") {
@@ -48,7 +54,7 @@ async fn main() {
             ::std::process::exit(1);
         }
     };
-    for t in tera.get_template_names().into_iter() {
+    for t in tera.get_template_names() {
         tracing::info!("loaded template {}", t);
     }
 
@@ -91,10 +97,11 @@ async fn main() {
 
     let app = rewriter.layer(router);
 
-    axum::Server::bind(&"0.0.0.0:5000".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    async_backtrace::frame!(
+        axum::Server::bind(&"0.0.0.0:5000".parse().unwrap()).serve(app.into_make_service())
+    )
+    .await
+    .unwrap();
 }
 
 #[cfg(test)]
